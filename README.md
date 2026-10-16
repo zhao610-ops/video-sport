@@ -1,51 +1,96 @@
-<div align="center">
+# 基于深度学习与智能体的足球战术分析系统的设计与实现
 
-  <h1>sports</h1>
+本仓库是计算机科学与技术专业本科毕业设计项目，目标是从**足球比赛电视转播视频**中提取可核查的战术数据，并由智能体基于这些数据提供战术问答与解释。
 
-[notebooks](https://github.com/roboflow/notebooks) | [inference](https://github.com/roboflow/inference) | [autodistill](https://github.com/autodistill/autodistill) | [maestro](https://github.com/roboflow/multimodal-maestro)
+> 当前状态：**视觉算法基线已导入，毕设功能尚在设计与开发阶段。** 仓库目前主要包含 [Roboflow Sports](https://github.com/roboflow/sports) 的原始代码及足球示例；尚未实现本项目自己的战术指标、智能体或完整系统界面。以下“规划功能”不代表已经完成。
 
-</div>
+## 项目目标与处理流程
 
-## 👋 hello
-
-In sports, every centimeter and every second matter. That's why Roboflow decided to use sports as a testing ground to push our object detection, image segmentation, keypoint detection, and foundational models to their limits. This repository contains reusable tools that can be applied in sports and beyond.
-
-## 🥵 challenges
-
-Are you also a fan of computer vision and sports?  We welcome contributions from anyone who shares our passion! Together, we can build powerful open-source tools for sports analytics. Here are the main challenges we're looking to tackle:
-
-- **Ball tracking:** Tracking the ball is extremely difficult due to its small size and rapid movements, especially in high-resolution videos.
-- **Reading jersey numbers:** Accurately reading player jersey numbers is often hampered by blurry videos, players turning away, or other objects obscuring the numbers.
-- **Player tracking:** Maintaining consistent player identification throughout a game is a challenge due to frequent occlusions caused by other players or objects on the field.
-- **Player re-identification:** Re-identifying players who have left and re-entered the frame is tricky, especially with moving cameras or when players are visually similar.
-- **Camera calibration:** Accurately calibrating camera views is crucial for extracting advanced statistics like player speed and distance traveled. This is a complex task due to the dynamic nature of sports and varying camera angles.
-
-## 💻 install
-
-We don't have a Python package yet. Install from source in a
-[**Python>=3.8**](https://www.python.org/) environment.
-
-```bash
-pip install git+https://github.com/roboflow/sports.git
+```text
+电视转播视频
+  → 球员、守门员、裁判与足球检测
+  → 多目标跟踪、球队分类
+  → 球场关键点识别与坐标映射
+  → 轨迹和战术数据提取
+  → 战术可视化
+  → 智能体调用数据分析工具，生成有依据的战术解释
 ```
 
-## ⚽ datasets
+本项目以赛后、离线分析为主要场景，先处理较短的比赛片段，再逐步扩展。电视转播画面会发生镜头切换，且常有球员不在画面内，因此系统应区分“观测到的数据”和“无法可靠判断的信息”，不把局部画面推断成完整的全场事实。
 
-| use case                               | dataset                                                                                                                                                           |
-|:---------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ⚽ soccer player detection              | [![Download Dataset](https://app.roboflow.com/images/download-dataset-badge.svg)](https://universe.roboflow.com/roboflow-jvuqo/football-players-detection-3zvbc)  |
-| ⚽ soccer ball detection                | [![Download Dataset](https://app.roboflow.com/images/download-dataset-badge.svg)](https://universe.roboflow.com/roboflow-jvuqo/football-ball-detection-rejhg)     |
-| ⚽ soccer pitch keypoint detection      | [![Download Dataset](https://app.roboflow.com/images/download-dataset-badge.svg)](https://universe.roboflow.com/roboflow-jvuqo/football-field-detection-f07vi)    |
-| 🏀 basketball court keypoint detection | [![Download Dataset](https://app.roboflow.com/images/download-dataset-badge.svg)](https://universe.roboflow.com/roboflow-jvuqo/basketball-court-detection-2)      |
-| 🏀 basketball jersey numbers ocr       | [![Download Dataset](https://app.roboflow.com/images/download-dataset-badge.svg)](https://universe.roboflow.com/roboflow-jvuqo/basketball-jersey-numbers-ocr)     |
+## 当前基线能够做什么
 
+`examples/soccer/main.py` 提供六种独立运行模式：
 
-Visit [Roboflow Universe](https://universe.roboflow.com/) and explore other sport-related datasets.
+| 模式 | 当前功能 |
+| --- | --- |
+| `PITCH_DETECTION` | 识别球场关键点 |
+| `PLAYER_DETECTION` | 检测球员、守门员、裁判和足球 |
+| `BALL_DETECTION` | 检测并显示足球位置 |
+| `PLAYER_TRACKING` | 给画面中的目标分配跟踪编号 |
+| `TEAM_CLASSIFICATION` | 根据球衣视觉特征区分球队 |
+| `RADAR` | 将可见球员映射到二维球场示意图 |
 
-## 🔥 demos
+这些功能来自上游项目，并不等同于已经完成战术分析。当前也**没有**可直接用于智能体问答的完整、稳定的战术数据接口。
 
-https://github.com/roboflow/sports/assets/26109316/7ad414dd-cc4e-476d-9af3-02dfdf029205
+## 毕设计划实现的部分
 
-## 🏆 contribution
+1. **视觉基线复现与评估**：在选定的电视转播片段上运行检测、跟踪、球队分类和球场映射，记录失败场景与基线结果。
+2. **关键环节改进**：针对镜头切换、遮挡或球场映射不稳定等问题，选择范围可控的算法改进点，开展消融或对比实验。
+3. **战术数据提取**：从可靠的轨迹与球场坐标中计算热力图、球队站位、宽度与紧凑度等基础指标；进攻/防守阶段和基础战术模式识别作为后续扩展。
+4. **智能体分析**：将战术指标封装为可调用的数据工具，使智能体按问题检索数据、解释结果、标注依据，并在数据不足时明确说明限制。
+5. **可视化与系统集成**：展示处理视频、二维球场、指标图表及智能体问答结果，并完成实验评估与论文撰写。
 
-We love your input! [Let us know](https://github.com/roboflow/sports/issues) what else we should build!
+以上是实施规划，实际完成情况将随开发进展更新，不预先承诺能够从单路转播视频准确恢复全场所有球员的位置或预测比赛结果。
+
+## 目录说明
+
+```text
+.
+├── examples/soccer/       # 上游足球示例：运行入口、训练笔记本、下载脚本
+├── sports/                # 上游通用运动视觉处理模块
+├── README_UPSTREAM.md     # 保留的 Roboflow 原项目首页说明
+├── LICENSE                # 上游 MIT 许可证
+└── setup.py               # 上游 Python 包配置
+```
+
+## 运行现有足球示例
+
+建议使用 Python 3.8 或以上版本，并在独立虚拟环境中安装依赖。以下命令在仓库根目录执行：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+python -m pip install -r examples/soccer/requirements.txt
+```
+
+足球示例需要额外的模型权重和视频。上游的 `examples/soccer/setup.sh` 会从 Google Drive 下载三个模型和多个示例视频，**不会随本仓库源码一起提供**；运行该脚本前请自行确认网络、文件来源、下载量和数据使用许可：
+
+```bash
+bash examples/soccer/setup.sh
+```
+
+准备好模型和视频后，可以从足球示例目录运行。例如：
+
+```bash
+cd examples/soccer
+python main.py \
+  --source_video_path data/2e57b9_0.mp4 \
+  --target_video_path data/2e57b9_0-radar.mp4 \
+  --device cpu \
+  --mode RADAR
+```
+
+`--device` 可按本机环境改为 `cuda` 或 `mps`。示例程序使用 OpenCV 窗口显示处理画面；无图形界面的服务器环境可能需要调整显示部分。更多模式和原始说明见 [足球示例 README](examples/soccer/README.md)。
+
+## 研究与复现约定
+
+- 保留上游代码历史、版权声明及许可证；自有功能与上游基线分开记录。
+- 固定测试视频、模型版本和参数，保存检测、跟踪、映射及战术指标的评估结果。
+- 对镜头切换、遮挡、非比赛镜头、球场关键点不足等情况记录失败原因，不生成没有数据依据的结论。
+- 不提交下载的模型权重、大型比赛视频或个人密钥。使用比赛素材前确认版权和使用条件。
+
+## 来源与许可
+
+本仓库以 [Roboflow Sports](https://github.com/roboflow/sports) 为视觉基线，导入时对应上游提交 `42c80c0`。上游代码采用 [MIT 许可证](LICENSE)，原首页说明见 [README_UPSTREAM.md](README_UPSTREAM.md)。足球示例还依赖 Ultralytics YOLO 等第三方组件；使用、发布或部署时应分别核对其许可证与模型权重、数据集的使用条款。本项目后续自行新增的代码和实验会在提交记录中区分。
