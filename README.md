@@ -106,7 +106,7 @@ macOS：
 
 ```bash
 ./.venv/bin/python examples/soccer/prepare_assets.py --include-samples
-./.venv/bin/python examples/soccer/main.py \
+./.venv/bin/python -m examples.soccer.main \
   --source_video_path examples/soccer/data/2e57b9_0.mp4 \
   --target_video_path examples/soccer/data/2e57b9_0-radar.mp4 \
   --device auto --mode RADAR --no-preview
@@ -116,13 +116,30 @@ Windows PowerShell：
 
 ```powershell
 .\.venv\Scripts\python.exe examples/soccer/prepare_assets.py --include-samples
-.\.venv\Scripts\python.exe examples/soccer/main.py `
+.\.venv\Scripts\python.exe -m examples.soccer.main `
   --source_video_path examples/soccer/data/2e57b9_0.mp4 `
   --target_video_path examples/soccer/data/2e57b9_0-radar.mp4 `
   --device auto --mode RADAR --no-preview
 ```
 
 `--no-preview` 只保存结果视频，不打开 OpenCV 窗口；去掉即可边处理边预览。程序会打印实际选择的设备。若要处理自己的视频，将 `--source_video_path` 换成视频路径即可；带空格的路径需要加引号。更多基线模式见 [足球示例 README](examples/soccer/README.md)。
+
+请从仓库根目录使用 `python -m examples.soccer.main` 启动；直接执行 `examples/soccer/main.py` 时，部分 Python 环境可能无法找到根目录下的 `sports` 包。
+
+只有球员检测模型和示例视频时，可以先在 macOS 上依次验证检测与跟踪：
+
+```bash
+./.venv/bin/python -m examples.soccer.main \
+  --source_video_path examples/soccer/data/2e57b9_0.mp4 \
+  --target_video_path examples/soccer/data/2e57b9_0-player-detection.mp4 \
+  --device auto --mode PLAYER_DETECTION --no-preview
+./.venv/bin/python -m examples.soccer.main \
+  --source_video_path examples/soccer/data/2e57b9_0.mp4 \
+  --target_video_path examples/soccer/data/2e57b9_0-player-tracking.mp4 \
+  --device auto --mode PLAYER_TRACKING --no-preview
+```
+
+2026 年 10 月 26 日在 Apple 芯片 Mac 上使用 MPS 完整处理了 30 秒示例视频，两个输出均为 750 帧、25 帧/秒。`setup.py` 将 `supervision` 固定为 0.30.9，因为上游跟踪代码使用的 `sv.ByteTrack` 已在 0.31 中移除。
 
 ### 双平台验收
 
