@@ -92,6 +92,16 @@ py -3.11 -m venv .venv
 
 足球示例的三个模型权重和示例视频不包含在仓库中。新脚本 `prepare_assets.py` 可在两个平台运行；默认只下载模型，添加 `--include-samples` 才下载上游示例视频。下载前请确认网络、文件来源、下载量和数据使用许可。原有的 `setup.sh` 是上游 Bash 脚本，Windows 用户无需运行它。
 
+如果脚本无法连接 Google Drive，可从上游公开链接手动下载，并按下表文件名放到 `examples/soccer/data/`：
+
+| 文件名 | 上游模型链接 |
+| --- | --- |
+| `football-ball-detection.pt` | [足球检测模型](https://drive.google.com/file/d/1isw4wx-MK9h9LMr36VvIWlJD6ppUvw7V/view) |
+| `football-player-detection.pt` | [球员检测模型](https://drive.google.com/file/d/17PXFNlx-jI7VjVo_vQnB1sONjRyvoB-q/view) |
+| `football-pitch-detection.pt` | [球场关键点模型](https://drive.google.com/file/d/1Ma5Kt86tgpdjCTKfum79YMgNnSjcoOyf/view) |
+
+`RADAR` 和 `TEAM_CLASSIFICATION` 模式还会在首次运行时从 Hugging Face 获取 [SigLIP 特征模型](https://huggingface.co/google/siglip-base-patch16-224)；因此，即使三个 `.pt` 文件已备齐，完整雷达图仍需要能访问该模型或提前缓存它。先验证 `PLAYER_DETECTION` 模式可以把问题分开排查。
+
 macOS：
 
 ```bash

@@ -45,7 +45,13 @@ def main() -> None:
             print(f"已存在，跳过：{destination}")
             continue
         print(f"正在下载：{filename}")
-        result = gdown.download(id=file_id, output=str(destination), quiet=False)
+        try:
+            result = gdown.download(id=file_id, output=str(destination), quiet=False)
+        except Exception as exc:
+            raise SystemExit(
+                f"下载失败：{filename}（{type(exc).__name__}）。"
+                "请检查 Google Drive 连通性，或按上游链接手动下载后放入 data 目录。"
+            )
         if not result or not destination.is_file() or destination.stat().st_size == 0:
             raise SystemExit(f"下载失败：{filename}。请检查网络或上游文件权限。")
 
