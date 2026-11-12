@@ -102,6 +102,8 @@ py -3.11 -m venv .venv
 
 `RADAR` 和 `TEAM_CLASSIFICATION` 模式还会在首次运行时从 Hugging Face 获取 [SigLIP 特征模型](https://huggingface.co/google/siglip-base-patch16-224)；因此，即使三个 `.pt` 文件已备齐，完整雷达图仍需要能访问该模型或提前缓存它。先验证 `PLAYER_DETECTION` 模式可以把问题分开排查。
 
+本机测试将 SigLIP 缓存保存在仓库的 `.cache/huggingface/`（不会提交到 Git）。复用这份缓存时，macOS 在运行命令前执行 `export HF_HOME="$PWD/.cache/huggingface"`；Windows PowerShell 执行 `$env:HF_HOME = "$PWD/.cache/huggingface"`。缓存下载完整后，可以设置 `HF_HUB_OFFLINE=1` 离线运行；换一台机器仍需单独准备缓存。下载后的球场、足球模型即使带有 `-v9`、`-v2` 后缀，也要重命名为表格中的固定文件名。
+
 macOS：
 
 ```bash
@@ -142,6 +144,18 @@ Windows PowerShell：
 2026 年 10 月 26 日在 Apple 芯片 Mac 上使用 MPS 完整处理了 30 秒示例视频，两个输出均为 750 帧、25 帧/秒。`setup.py` 将 `supervision` 固定为 0.30.9，因为上游跟踪代码使用的 `sv.ByteTrack` 已在 0.31 中移除。
 
 ### 双平台验收
+
+2026 年 11 月 12 日 macOS MPS 基线验证结果：
+
+| 模式 | 验证范围 | 输出文件（位于 `examples/soccer/data/`） |
+| --- | --- | --- |
+| 球场关键点检测 | 完整 30 秒，750 帧 | `2e57b9_0-pitch-detection.mp4` |
+| 足球切片检测 | 前 2 秒，50 帧 | `2e57b9_0-ball-detection-preview.mp4` |
+| 球队区分、跟踪与雷达图 | 完整 30 秒，750 帧；首、中、尾帧可读 | `2e57b9_0-radar.mp4` |
+
+本次修复了 Supervision 0.30.9 的切片检测参数名，以及跟踪器启动时空结果导致的编号读取异常。雷达图模式已包含球队区分，但未单独运行完整的 `TEAM_CLASSIFICATION` 视频。上游雷达图不包含专用足球模型的检测结果。
+
+这些结果确认了流程可运行，尚未评估检测准确率、身份切换率和映射位置误差。抽样雷达图中仍可见部分球员映射点越界；后续需要加入关键点置信度筛选、映射质量检查，并导出带时间戳、跟踪编号、球队与有效性标记的坐标数据，再开展战术统计。Windows 尚未完成验证。
 
 使用同一段短视频，分别记录 Windows 和 macOS 上的 Python/PyTorch 版本、显卡与实际推理设备，并确认：依赖安装成功、三个模型可读取、`RADAR` 能处理完整片段、输出视频可播放。遇到模型不支持 GPU 或显存不足时，先用 `--device cpu` 排查功能问题，再处理加速兼容问题。
 
