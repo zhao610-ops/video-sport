@@ -1,0 +1,10 @@
+{
+  "status": "unknown",
+  "length_m": null,
+  "width_m": null,
+  "venue": null,
+  "source_url": null,
+  "valid_from": null,
+  "valid_to": null,
+  "note": "未提供真实比赛场地尺寸，允许使用相对坐标分析"
+}

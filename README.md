@@ -2,7 +2,7 @@
 
 本仓库是计算机科学与技术专业本科毕业设计项目，目标是从**足球比赛电视转播视频**中提取可核查的战术数据，并由智能体基于这些数据提供战术问答与解释。
 
-> 当前状态：**视觉算法基线已导入，毕设功能尚在设计与开发阶段。** 仓库目前主要包含 [Roboflow Sports](https://github.com/roboflow/sports) 的原始代码及足球示例；尚未实现本项目自己的战术指标、智能体或完整系统界面。以下“规划功能”不代表已经完成。
+> 当前状态：**视觉基线已验证，已新增映射质量检查、站位数据导出与离线轨迹/热区报告。** 基于 [Roboflow Sports](https://github.com/roboflow/sports) 开发；战术指标、比赛检索、智能体和完整界面仍待实现。以下“规划功能”不代表已经完成。
 
 ## 项目目标与处理流程
 
@@ -170,6 +170,50 @@ Apple 芯片 Mac（预期 MPS 为 `True`）：
 ```bash
 ./.venv/bin/python -c "import torch; print(torch.__version__, torch.backends.mps.is_available())"
 ```
+
+## 导出本项目的站位数据
+
+本流程不要求先确认真实球场尺寸。未知尺寸使用上游相对模板（长 12000、宽 7000 的模板单位），输出 0～100 的相对坐标；模板单位不代表实际球场厘米。新流程将禁区深度和宽度修正为 1650、4032 厘米对应的模板标线。未知长宽时，内部标线与实际场地的比例仍可能有偏差，所以归一化不能消除模板偏差。本版不输出米制距离、速度或全场跑动指标。
+
+在仓库根目录执行（macOS，已缓存 SigLIP）：
+
+```bash
+export HF_HOME="$PWD/.cache/huggingface"
+export HF_HUB_OFFLINE=1
+./.venv/bin/python -m examples.soccer.analyze \
+  --source examples/soccer/data/2e57b9_0.mp4 \
+  --output-dir outputs/match-01 --device auto --save-video
+```
+
+Windows PowerShell 使用相同参数，将 Python 路径替换为 `.\.venv\Scripts\python.exe`；设置缓存使用 `$env:HF_HOME = "$PWD/.cache/huggingface"`。模型未缓存完整时不要设置离线模式。短片验收可加 `--max-frames 50`，输出目录必须是新的，避免覆盖实验结果。
+
+输出包括：
+
+- `positions.csv`：每条已确认跟踪观测的时间、编号、角色、球队、检测置信度、画面落脚点、相对坐标、有效性和异常原因，仅含球员与守门员。
+- `analysis.json`：相同观测及逐帧映射状态、帧率、参数、模板信息、尺寸来源和处理完成状态。无球员的帧也会保留；处理异常时保留已有结果并标记 `error`。
+- `observations.mp4`：加 `--save-video` 时生成，画面上显示跟踪编号、球队及坐标有效性，便于对照。
+
+关键口径：时间戳为从 0 开始的 `frame_index / fps`，不是比分牌时间；输入按恒定帧率解释，变帧率素材需先转换。坐标原点为模板左上角，x 沿长度、y 沿宽度。球队 0/1 为本次聚类编号，不是主客队；跟踪编号不是球衣号码，镜头切换后不保证身份连续。守门员球队按画面内两队中心的距离估计；两队样本不齐全时记为未知。
+
+映射初始实验参数为关键点置信度 0.5、至少 6 个 RANSAC 内点、内点比例至少 0.6、图像空间误差阈值 8 像素，均可通过命令行调整并随结果保存。这些是待实验评估的参数，不是已验证的精度承诺。
+
+映射失败帧不沿用历史矩阵；越界点保留原数值并标记 `out_of_bounds`，不裁剪。其他原因包括 `missing_keypoints`、`insufficient_keypoints`、`degenerate_keypoints`、`insufficient_inliers`、`mapping_failed`、`non_finite_coordinate`。观测中的 `frame_mapping_invalid` 需要结合对应帧的具体失败原因读取。`coordinate_valid` 仅表示通过本版几何检查，不能证明真实位置准确，也不包含球队/身份正确性判断。
+
+可通过 `--pitch-profile examples/soccer/pitch-profile.example.json` 提供尺寸及来源。状态 `unknown` 表示未知、`reference` 表示参考资料、`verified` 表示提供者已核实；程序不会自行把参考资料升级为历史比赛的真实尺寸。此版本只读取提供的资料，比赛候选确认、联网尺寸检索与来源核验尚未接入。
+
+### 不重新识别视频生成轨迹和热区
+
+```bash
+python3 -m examples.soccer.report \
+  --input outputs/match-01/analysis.json \
+  --output outputs/match-01/report.html
+```
+
+报告只依赖 Python 标准库，不访问视频、模型或网络。只使用有效坐标，轨迹在无效/漏检帧处断开；热区表示可见目标的有效观测次数，受镜头覆盖影响。浏览器打开 HTML 即可查看，字体优先使用微软雅黑。
+
+验证几何错误和导出一致性：`./.venv/bin/python -m unittest discover -s tests -v`。
+
+2026 年 11 月 12 日新增流程实测：同一示例的前 50 帧，默认 8 像素阈值全部因内点不足被拒绝，保留为 `analysis-check-01`；显式设置 `--ransac-pixels 16` 的对照结果保存在 `analysis-check-16px`，共 1008 条观测、799 条通过几何检查、209 条无效，40 帧通过映射检查。两组均在 `examples/soccer/data/` 下，未提交 Git。CSV/JSON 逐条核对一致，标注视频为 50 帧且末帧可读；使用系统 Python 从保存的 JSON 生成了离线 HTML。16 像素仅为实验对照，未更改默认参数，这些数字不是定位准确率。新增流程尚未完成完整 750 帧和 Windows 实机验证。
 
 ## 研究与复现约定
 
