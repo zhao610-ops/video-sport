@@ -266,7 +266,7 @@ python3 -m examples.soccer.report \
 
 ## 基础可见球员指标
 
-读取已保存的站位 JSON 即可计算，无需模型、视频或网络；此命令只使用 Python 标准库。守门员口径必须显式指定，尚未设定项目默认：
+读取已保存的站位 JSON 即可计算，无需模型、视频或网络；此命令只使用 Python 标准库。经用户确认，项目默认排除守门员，其数据继续保留在原始 `analysis.json` 和 `positions.csv` 中，供单独分析：
 
 ```bash
 python3 -m examples.soccer.tactics \
@@ -274,7 +274,7 @@ python3 -m examples.soccer.tactics \
   --output-dir outputs/tactics-outfield --goalkeepers exclude
 ```
 
-`--goalkeepers exclude` 仅统计非守门员，`include` 同时包含守门员。输出 `metrics.csv`、`metrics.json` 和交互式 `report.html`。报告包含逐帧球队中心、坐标范围框，以及宽度、纵向跨度、中心 x/y、有效人数的五组时间图。统计口径及公式保存在 JSON 中，供后续分析工具读取。
+不传 `--goalkeepers` 时采用 `exclude`，仅统计非守门员；显式传 `--goalkeepers include` 可同时包含守门员。输出 `metrics.csv`、`metrics.json` 和交互式 `report.html`。报告包含逐帧球队中心、坐标范围框，以及宽度、纵向跨度、中心 x/y、有效人数的五组时间图。统计口径及公式保存在 JSON 中，供后续分析工具读取。
 
 | 指标 | 定义 | 单位 |
 | --- | --- | --- |
@@ -287,7 +287,7 @@ python3 -m examples.soccer.tactics \
 
 每帧保留两队记录；不可计算时中心与跨度为 JSON `null` / CSV 空单元格，而不是零。`visible_count` 字段是有效候选人数，不是实际全队人数或画面内总人数。报告不跨缺失帧连线，不平滑、不换算米制值，也不自动判断进攻方向；纵向跨度不应直接称为进攻纵深。曲线受画面覆盖、映射与球队分类影响，不能单凭曲线判断战术意图。
 
-2026 年 11 月 13 日验证：在改进版第二段 250 帧上，每种守门员口径均输出 500 条球队逐帧记录。其中 328 条可计算、144 条因帧映射无效缺失、28 条因角色人数超过上限缺失。两种口径保留为 `tactics-outfield`、`tactics-all` 两份本地预览，口径选择仍待用户确认；输出未提交 Git。CSV/JSON 的记录数、帧号、球队与可用性已核对，页面时间轴、缺失状态和五组曲线已检查；共 16 项自动测试通过。
+2026 年 11 月 13 日验证：在改进版第二段 250 帧上，每种守门员口径均输出 500 条球队逐帧记录。其中 328 条可计算、144 条因帧映射无效缺失、28 条因角色人数超过上限缺失。`tactics-outfield` 为用户确认的默认口径，`tactics-all` 保留为可选对照；输出未提交 Git。CSV/JSON 的记录数、帧号、球队与可用性已核对，页面时间轴、缺失状态和五组曲线已检查；共 16 项自动测试通过。
 
 ## 研究与复现约定
 

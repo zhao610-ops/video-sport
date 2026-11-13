@@ -147,8 +147,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='不运行识别模型，计算可见球员的中心与跨度')
     parser.add_argument('--input', required=True)
     parser.add_argument('--output-dir', required=True)
-    parser.add_argument('--goalkeepers', choices=['include', 'exclude'], required=True,
-                        help='明确选择守门员是否参与统计')
+    parser.add_argument('--goalkeepers', choices=['include', 'exclude'], default='exclude',
+                        help='默认 exclude 排除守门员，include 可临时将其纳入统计')
     parser.add_argument('--min-players', type=int, default=2, help='至少 2，计算门槛不是完整阵型可靠性门槛')
     args = parser.parse_args()
     export_tactics(args.input, args.output_dir, args.goalkeepers == 'include', args.min_players)
