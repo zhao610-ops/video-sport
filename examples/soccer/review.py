@@ -11,7 +11,7 @@ import cv2
 from sports.annotators.pitch_svg import draw_pitch_svg
 
 
-def build_review(input_path, output_path, sample_count=15, frame_indices=None):
+def build_review(input_path, output_path, sample_count=15, frame_indices=None, overlay_lines=False):
     if frame_indices is None and sample_count < 2:
         raise ValueError('至少选择 2 帧')
     with open(input_path, encoding='utf-8') as stream:
@@ -29,6 +29,12 @@ def build_review(input_path, output_path, sample_count=15, frame_indices=None):
         selected = [lookup[index] for index in sorted(set(frame_indices))]
     capture = cv2.VideoCapture(data['metadata']['source_video'])
     samples = []
+    if overlay_lines:
+        import numpy as np
+        from sports.common.analysis import MappingSettings, fit_mapping
+        from sports.configs.soccer import SoccerPitchConfiguration
+        config = SoccerPitchConfiguration(**data['metadata']['template_cm'])
+        settings = MappingSettings(**data['metadata']['mapping_settings'])
     try:
         for index in selected:
             frame = frames[index]
@@ -41,7 +47,28 @@ def build_review(input_path, output_path, sample_count=15, frame_indices=None):
             ok, encoded = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
             if not ok:
                 raise ValueError('抽帧编码失败')
+            projected_lines = ''
+            if overlay_lines and frame.get('keypoints'):
+                raw = frame['keypoints']
+                matrix, _ = fit_mapping(raw['xy'], raw['confidence'], config, settings)
+                if matrix is not None:
+                    inverse = np.linalg.inv(matrix)
+                    vertices = cv2.perspectiveTransform(
+                        np.asarray(config.vertices, dtype=float).reshape(-1, 1, 2), inverse).reshape(-1, 2)
+                    for a, b in config.edges:
+                        points = vertices[[a-1, b-1]]
+                        if np.isfinite(points).all():
+                            projected_lines += (f'<path d="M{points[0,0]} {points[0,1]} '
+                                                f'L{points[1,0]} {points[1,1]}"/>')
+                    theta = np.linspace(0, 2*np.pi, 73)
+                    circle = np.column_stack([config.length/2 + config.centre_circle_radius*np.cos(theta),
+                                              config.width/2 + config.centre_circle_radius*np.sin(theta)])
+                    circle = cv2.perspectiveTransform(circle.reshape(-1, 1, 2), inverse).reshape(-1, 2)
+                    if np.isfinite(circle).all():
+                        projected_lines += '<polyline points="' + ' '.join(f'{x},{y}' for x,y in circle) + '"/>'
+                    projected_lines = '<g fill="none" stroke="#ffcf30" stroke-width="4" pointer-events="none">' + projected_lines + '</g>'
             samples.append({**frame, 'image_width': width, 'image_height': height,
+                            'projection_svg': projected_lines,
                             'image': 'data:image/jpeg;base64,' + base64.b64encode(encoded).decode('ascii')})
     finally:
         capture.release()
@@ -50,6 +77,8 @@ def build_review(input_path, output_path, sample_count=15, frame_indices=None):
     template = data['metadata'].get('template_cm', {'width': 6250, 'length': 10000})
     display_height = 100 * template['width'] / template['length']
     pitch_background = json.dumps(draw_pitch_svg(template, 100, display_height), ensure_ascii=False)
+    profile = data['metadata'].get('pitch_profile', {'status': 'unknown'})
+    profile_text = html.escape(f"尺寸状态：{profile['status']}。{profile.get('note') or ''}")
     document = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>逐帧坐标核对</title>
 <style>body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;margin:24px;color:#24323c;background:#f7f9fa}
 h1{font-size:26px}p{line-height:1.8}button,input{font:inherit}button{padding:8px 18px;margin-right:12px}
@@ -60,6 +89,8 @@ code{overflow-wrap:anywhere}.selected{stroke:#151515;stroke-width:4}
 <h1>同一帧：原画面与二维站位</h1><p>来源：<code>SOURCE_PLACEHOLDER</code></p>
 <p>拖动选择抽查帧；两侧编号一致，点击一个编号可同时突出对应目标。
 粉色/蓝色表示本次聚类球队，灰色表示球队未知。左图叉号表示坐标无效；右图只显示有效点。</p>
+<p>PROFILE_PLACEHOLDER</p>
+<label><input id="overlay" type="checkbox" style="width:auto">叠加映射标线：检查黄色线是否贴合真实白线</label>
 <button id="prev">上个抽查点</button><input id="slider" type="range" min="0" value="0"><button id="next">下个抽查点</button>
 <p id="status"></p><div class="panes"><div class="pane"><h2>原画面与落脚点</h2><svg id="source"></svg></div>
 <div class="pane"><h2>同一时刻的相对站位</h2><svg id="pitch"></svg></div></div>
@@ -78,15 +109,19 @@ return `<g data-id="${r.track_id}" style="cursor:pointer"><circle cx="${x}" cy="
 function draw(){const frame=samples[Number(slider.value)];const source=document.getElementById('source');
 source.setAttribute('viewBox',`0 0 ${frame.image_width} ${frame.image_height}`);
 source.innerHTML=`<image href="${frame.image}" width="${frame.image_width}" height="${frame.image_height}"/>`+
+(document.getElementById('overlay').checked?(frame.projection_svg??''):'')+
 frame.positions.map(r=>marker(r,r.image_x,r.image_y,6)+(r.coordinate_valid?'':`<text x="${r.image_x-16}" y="${r.image_y-12}" fill="red" font-size="28">×</text>`)).join('');
 const pitch=document.getElementById('pitch');pitch.setAttribute('viewBox',`-5 -5 110 ${displayHeight+10}`);
 pitch.innerHTML=background+frame.positions.filter(r=>r.coordinate_valid).map(r=>marker(r,r.x_norm,r.y_norm*displayHeight/100,.9)).join('');
 const q=frame.mapping;document.getElementById('status').textContent=`第 ${frame.frame_index} 帧｜视频 ${frame.timestamp_s.toFixed(2)} 秒｜映射：${q.valid?'通过几何检查':'无效'}（${q.reason}）｜有效观测 ${frame.positions.filter(r=>r.coordinate_valid).length}/${frame.positions.length}｜内点 ${q.inliers??0}/${q.selected_keypoints??0}`;
 document.querySelectorAll('[data-id]').forEach(node=>node.onclick=()=>{selected=Number(node.dataset.id);draw();});}
-slider.oninput=draw;document.getElementById('prev').onclick=()=>{slider.value=Math.max(0,Number(slider.value)-1);draw();};
+slider.oninput=draw;document.getElementById('overlay').onchange=draw;
+document.getElementById('overlay').disabled=!samples.some(f=>f.projection_svg);
+document.getElementById('prev').onclick=()=>{slider.value=Math.max(0,Number(slider.value)-1);draw();};
 document.getElementById('next').onclick=()=>{slider.value=Math.min(samples.length-1,Number(slider.value)+1);draw();};draw();
 </script></html>'''
     document = (document.replace('SOURCE_PLACEHOLDER', source)
+                .replace('PROFILE_PLACEHOLDER', profile_text)
                 .replace('HEIGHT_PLACEHOLDER', str(display_height))
                 .replace('PITCH_PLACEHOLDER', pitch_background).replace('DATA_PLACEHOLDER', payload))
     output = Path(output_path)
@@ -101,5 +136,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', required=True)
     parser.add_argument('--samples', type=int, default=15)
     parser.add_argument('--frames', type=int, nargs='+', help='指定需核对的原视频帧编号，优先于均匀抽帧')
+    parser.add_argument('--overlay-lines', action='store_true', help='附带球场标线反投影，供人工检查贴合情况')
     args = parser.parse_args()
-    build_review(args.input, args.output, args.samples, args.frames)
+    build_review(args.input, args.output, args.samples, args.frames, args.overlay_lines)

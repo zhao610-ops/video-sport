@@ -237,6 +237,27 @@ python3 -m examples.soccer.report \
 
 比较工具仅使用 NumPy/OpenCV 和保存的数据，不访问视频、球队模型或网络。它输出通过检查的帧数、有效观测数、越界数、拟合内点重投影误差和连续观测的位置变化。拟合内点误差不是独立真值误差，位置变化也不等于速度；不能只按有效率选择正式参数。旧结果没有保存关键点时会明确提示，不生成伪造的对照结果。
 
+### 禁区与中场之间的偏差诊断
+
+仅把坐标归一化并不能消除错误模板比例带来的偏差。第二段样本的原拟合主要采用中圈附近的点，曾把禁区附近的点排除，造成局部一致但远端外推偏差。现提供显式的实验策略，不更改旧默认：
+
+```bash
+./.venv/bin/python -m examples.soccer.remap \
+  --input examples/soccer/data/validation-0bfacc-16px/analysis.json \
+  --output-dir outputs/0bfacc-refined \
+  --pitch-profile examples/soccer/profiles/0bfacc-reference.json \
+  --anchor-policy structural --require-region-support
+./.venv/bin/python -m examples.soccer.review \
+  --input outputs/0bfacc-refined/analysis.json \
+  --output outputs/0bfacc-refined/review.html --samples 10 --overlay-lines
+```
+
+`structural` 排除数组位置（从 1 计）11、12、19、20 的虚拟延长线交点，以及 31、32 的中圈侧向辅助点；保留真实标线交点、角点、罚球点和中线与中圈的交点。`--require-region-support` 要求某个球场区域已有至少 2 个入选点时，该区域也至少保留 2 个内点，避免静默丢掉整片区域后向外推断。关键点不足的帧继续标记无效，不用插值补齐。
+
+原视频的场馆标牌提示 Stuttgart，当前场馆官网列出 105×68。该资料只在专用 profile 中标记为 `reference`，不保证片段的历史真实尺寸，也不自动用于所有比赛。`remap` 保留原有时间、脚点、球队及身份，仅重算坐标。新分析也可显式传入上述策略参数。
+
+`--overlay-lines` 会在核对页增加黄色反投影线开关：应检查它是否贴合原视频的白色禁区线、中线、边线与中圈。反投影仍基于当前拟合，不是额外的人工真值。详细对照见 [验证记录中的偏差诊断](docs/mapping-validation.md)。
+
 验证几何错误和导出一致性：`./.venv/bin/python -m unittest discover -s tests -v`。
 
 2026 年 11 月 12 日新增流程实测：同一示例的前 50 帧，默认 8 像素阈值全部因内点不足被拒绝，保留为 `analysis-check-01`；显式设置 `--ransac-pixels 16` 的对照结果保存在 `analysis-check-16px`，共 1008 条观测、799 条通过几何检查、209 条无效，40 帧通过映射检查。两组均在 `examples/soccer/data/` 下，未提交 Git。CSV/JSON 逐条核对一致，标注视频为 50 帧且末帧可读；使用系统 Python 从保存的 JSON 生成了离线 HTML。16 像素仅为实验对照，未更改默认参数，这些数字不是定位准确率。新增流程尚未完成完整 750 帧和 Windows 实机验证。

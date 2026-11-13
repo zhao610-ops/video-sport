@@ -15,6 +15,7 @@ from sports.common.analysis import (
 from examples.soccer.report import render_report
 from examples.soccer.evaluate import compare_settings
 from examples.soccer.review import build_review
+from examples.soccer.remap import remap
 
 
 class MappingTests(unittest.TestCase):
@@ -51,6 +52,52 @@ class MappingTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertEqual(reason, 'out_of_bounds')
         self.assertEqual(map_position([1, 2], np.zeros((3, 3)), self.config)[:2], (None, None))
+
+    def test_region_support_rejects_midfield_only_fit(self):
+        xy = self.xy.copy()
+        confidence = np.zeros(32)
+        confidence[[0, 9, 13, 14, 15, 16, 30, 31]] = 1
+        xy[0] += [500, 600]
+        xy[9] += [700, 400]
+        settings = MappingSettings(require_region_support=True)
+        matrix, quality = fit_mapping(xy, confidence, self.config, settings)
+        self.assertIsNone(matrix)
+        self.assertEqual(quality['reason'], 'insufficient_region_support')
+
+    def test_structural_policy_and_remap_preserve_original_observations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = {
+                'schema_version': '1.0', 'summary': {'status': 'complete'},
+                'metadata': {'source_video': '测试.mp4', 'pitch_profile': self.profile,
+                             'template_cm': {'length': self.config.length, 'width': self.config.width,
+                                             'penalty_box_length': self.config.penalty_box_length,
+                                             'penalty_box_width': self.config.penalty_box_width},
+                             'mapping_settings': vars(self.settings)},
+                'frames': [{'frame_index': 0, 'timestamp_s': 0.,
+                            'keypoints': {'xy': self.xy.tolist(), 'confidence': [1.] * 32},
+                            'positions': [dict.fromkeys(AnalysisWriter.fields)]}],
+            }
+            pixel = cv2.perspectiveTransform(
+                np.array([[[self.config.length * .3, self.config.width * .6]]]), self.inverse)[0, 0]
+            data['frames'][0]['positions'][0].update(frame_index=0, timestamp_s=0., track_id=7,
+                                                    role='player', team_id=1, image_x=float(pixel[0]),
+                                                    image_y=float(pixel[1]), coordinate_valid=False)
+            source = root / 'source.json'
+            original = json.dumps(data, ensure_ascii=False)
+            source.write_text(original, encoding='utf-8')
+            remap(source, root / 'result', anchor_policy='structural', require_region_support=True)
+            with open(root / 'result' / 'analysis.json', encoding='utf-8') as stream:
+                result = json.load(stream)
+            frame = result['frames'][0]
+            self.assertEqual(frame['positions'][0]['track_id'], 7)
+            self.assertEqual(frame['positions'][0]['team_id'], 1)
+            self.assertAlmostEqual(frame['positions'][0]['x_norm'], 30., places=3)
+            self.assertAlmostEqual(frame['positions'][0]['y_norm'], 60., places=3)
+            self.assertTrue(frame['positions'][0]['coordinate_valid'])
+            self.assertTrue(all(i not in frame['mapping']['inlier_keypoint_indices']
+                                for i in (10, 11, 18, 19, 30, 31)))
+            self.assertEqual(source.read_text(encoding='utf-8'), original)
 
     def test_csv_json_empty_frames_and_offline_report(self):
         with tempfile.TemporaryDirectory() as directory:

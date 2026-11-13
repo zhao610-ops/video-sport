@@ -20,6 +20,8 @@ class MappingSettings:
     min_inliers: int = 6
     ransac_pixels: float = 8.0
     min_inlier_ratio: float = 0.6
+    anchor_policy: str = 'all'
+    require_region_support: bool = False
 
     def __post_init__(self):
         if not 0 < self.keypoint_confidence <= 1:
@@ -28,6 +30,8 @@ class MappingSettings:
             raise ValueError('内点至少为 4 个，像素误差阈值必须大于 0')
         if not 0 < self.min_inlier_ratio <= 1:
             raise ValueError('内点比例必须位于 (0, 1]')
+        if self.anchor_policy not in ('all', 'structural'):
+            raise ValueError('关键点策略应为 all 或 structural')
 
 
 def load_pitch_profile(path=None):
@@ -76,6 +80,11 @@ def fit_mapping(xy, confidence, config, settings):
     mask = (np.isfinite(source).all(axis=1) & np.isfinite(conf)
             & (conf >= settings.keypoint_confidence)
             & (source[:, 0] > 1) & (source[:, 1] > 1))
+    if settings.anchor_policy == 'structural':
+        # 排除禁区线上的虚拟延长线交点，以及中圈没有相交标线的两侧辅助点。
+        # 模型数组从 0 开始；真实中线与中圈交点仍参与拟合。
+        mask[[10, 11, 18, 19, 30, 31]] = False
+    indices = np.flatnonzero(mask)
     source, target = source[mask], target[mask]
     quality['selected_keypoints'] = len(source)
     if len(source) < settings.min_inliers:
@@ -94,9 +103,22 @@ def fit_mapping(xy, confidence, config, settings):
         inliers = inlier_mask.ravel().astype(bool)
         quality['inliers'] = int(inliers.sum())
         quality['inlier_ratio'] = float(inliers.mean())
+        quality['inlier_keypoint_indices'] = indices[inliers].tolist()
+        regions = np.where(target[:, 0] <= config.length / 4, 'left',
+                           np.where(target[:, 0] >= config.length * 3 / 4, 'right', 'midfield'))
+        quality['region_support'] = {
+            name: {'selected': int((regions == name).sum()),
+                   'inliers': int(((regions == name) & inliers).sum())}
+            for name in ('left', 'midfield', 'right')
+        }
         if (quality['inliers'] < settings.min_inliers
                 or quality['inlier_ratio'] < settings.min_inlier_ratio):
             quality['reason'] = 'insufficient_inliers'
+            return None, quality
+        if settings.require_region_support and any(
+                group['selected'] >= 2 and group['inliers'] < 2
+                for group in quality['region_support'].values()):
+            quality['reason'] = 'insufficient_region_support'
             return None, quality
         predicted = cv2.perspectiveTransform(target[inliers].reshape(-1, 1, 2), inverse)
         error = float(np.median(np.linalg.norm(

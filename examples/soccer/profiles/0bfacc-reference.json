@@ -1,0 +1,12 @@
+{
+  "status": "reference",
+  "length_m": 105,
+  "width_m": 68,
+  "venue": "MHP Arena Stuttgart（视频标牌为 Mercedes-Benz Arena，按画面推断）",
+  "source_url": "https://www.mhparena-stuttgart.de/arena/daten-fakten",
+  "source_excerpt": "Rasen: Maße: 105 m x 68 m",
+  "retrieved_at": "2026-11-13",
+  "valid_from": null,
+  "valid_to": null,
+  "note": "官网当前公布的场地尺寸，仅作为该片段的参考模板；未核实具体比赛身份和历史尺寸，不自动标记为 verified，不输出实测距离或速度。"
+}

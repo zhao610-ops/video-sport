@@ -146,8 +146,11 @@ if __name__ == '__main__':
     parser.add_argument('--min-inliers', type=int, default=6)
     parser.add_argument('--ransac-pixels', type=float, default=8.0)
     parser.add_argument('--min-inlier-ratio', type=float, default=0.6)
+    parser.add_argument('--anchor-policy', choices=['all', 'structural'], default='all')
+    parser.add_argument('--require-region-support', action='store_true')
     args = parser.parse_args()
     analyze(args.source, args.output_dir, args.device, args.pitch_profile,
             args.max_frames, args.save_video,
             MappingSettings(args.keypoint_confidence, args.min_inliers,
-                            args.ransac_pixels, args.min_inlier_ratio))
+                            args.ransac_pixels, args.min_inlier_ratio,
+                            args.anchor_policy, args.require_region_support))
