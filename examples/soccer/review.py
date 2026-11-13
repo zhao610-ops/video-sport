@@ -8,6 +8,8 @@ from pathlib import Path
 
 import cv2
 
+from sports.annotators.pitch_svg import draw_pitch_svg
+
 
 def build_review(input_path, output_path, sample_count=15, frame_indices=None):
     if frame_indices is None and sample_count < 2:
@@ -47,6 +49,7 @@ def build_review(input_path, output_path, sample_count=15, frame_indices=None):
     source = html.escape(data['metadata']['source_video'])
     template = data['metadata'].get('template_cm', {'width': 6250, 'length': 10000})
     display_height = 100 * template['width'] / template['length']
+    pitch_background = json.dumps(draw_pitch_svg(template, 100, display_height), ensure_ascii=False)
     document = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>逐帧坐标核对</title>
 <style>body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;margin:24px;color:#24323c;background:#f7f9fa}
 h1{font-size:26px}p{line-height:1.8}button,input{font:inherit}button{padding:8px 18px;margin-right:12px}
@@ -65,6 +68,7 @@ code{overflow-wrap:anywhere}.selected{stroke:#151515;stroke-width:4}
 <script id="samples" type="application/json">DATA_PLACEHOLDER</script><script>
 const samples=JSON.parse(document.getElementById('samples').textContent);
 const displayHeight=HEIGHT_PLACEHOLDER;
+const background=PITCH_PLACEHOLDER;
 const slider=document.getElementById('slider');slider.max=samples.length-1;let selected=null;
 const color=r=>r.team_id===0?'#ff4794':r.team_id===1?'#00bfff':'#999';
 const marker=(r,x,y,size)=>{
@@ -75,7 +79,6 @@ function draw(){const frame=samples[Number(slider.value)];const source=document.
 source.setAttribute('viewBox',`0 0 ${frame.image_width} ${frame.image_height}`);
 source.innerHTML=`<image href="${frame.image}" width="${frame.image_width}" height="${frame.image_height}"/>`+
 frame.positions.map(r=>marker(r,r.image_x,r.image_y,6)+(r.coordinate_valid?'':`<text x="${r.image_x-16}" y="${r.image_y-12}" fill="red" font-size="28">×</text>`)).join('');
-const background=`<rect width="100" height="${displayHeight}" fill="#e8f1e6" stroke="#555" stroke-width=".4"/><path d="M50 0V${displayHeight}" stroke="#555" stroke-width=".4"/><circle cx="50" cy="${displayHeight/2}" r="7.6" fill="none" stroke="#555" stroke-width=".4"/>`;
 const pitch=document.getElementById('pitch');pitch.setAttribute('viewBox',`-5 -5 110 ${displayHeight+10}`);
 pitch.innerHTML=background+frame.positions.filter(r=>r.coordinate_valid).map(r=>marker(r,r.x_norm,r.y_norm*displayHeight/100,.9)).join('');
 const q=frame.mapping;document.getElementById('status').textContent=`第 ${frame.frame_index} 帧｜视频 ${frame.timestamp_s.toFixed(2)} 秒｜映射：${q.valid?'通过几何检查':'无效'}（${q.reason}）｜有效观测 ${frame.positions.filter(r=>r.coordinate_valid).length}/${frame.positions.length}｜内点 ${q.inliers??0}/${q.selected_keypoints??0}`;
@@ -84,7 +87,8 @@ slider.oninput=draw;document.getElementById('prev').onclick=()=>{slider.value=Ma
 document.getElementById('next').onclick=()=>{slider.value=Math.min(samples.length-1,Number(slider.value)+1);draw();};draw();
 </script></html>'''
     document = (document.replace('SOURCE_PLACEHOLDER', source)
-                .replace('HEIGHT_PLACEHOLDER', str(display_height)).replace('DATA_PLACEHOLDER', payload))
+                .replace('HEIGHT_PLACEHOLDER', str(display_height))
+                .replace('PITCH_PLACEHOLDER', pitch_background).replace('DATA_PLACEHOLDER', payload))
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(document, encoding='utf-8')

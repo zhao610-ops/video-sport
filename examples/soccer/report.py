@@ -6,6 +6,8 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from sports.annotators.pitch_svg import draw_pitch_svg
+
 
 def render_report(input_path, output_path):
     with open(input_path, encoding='utf-8') as stream:
@@ -43,9 +45,9 @@ def render_report(input_path, output_path):
              f'fill="#f57c24" opacity="{count / peak:.3f}"><title>{count} 次有效观测</title></rect>'
              for (x, y), count in heat.items()]
     def pitch(content):
-        return ('<svg viewBox="-8 -8 816 516" role="img"><rect width="800" height="500" fill="#edf5ec"/>'
-                + content + '<g fill="none" stroke="#555"><rect width="800" height="500"/>'
-                '<path d="M400 0V500"/><ellipse cx="400" cy="250" rx="60" ry="60"/></g></svg>')
+        return ('<svg viewBox="-22 -8 844 516" role="img">'
+                + draw_pitch_svg(data['metadata'].get('template_cm'), 800, 500)
+                + content + '</svg>')
     source = html.escape(data['metadata']['source_video'])
     document = f'''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <title>足球站位数据检查</title><style>
