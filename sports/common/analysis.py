@@ -148,13 +148,14 @@ class AnalysisWriter:
         self.writer = csv.DictWriter(self.stream, fieldnames=self.fields)
         self.writer.writeheader()
 
-    def add_frame(self, index, timestamp, quality, records):
+    def add_frame(self, index, timestamp, quality, records, keypoints=None):
         self.writer.writerows(records)
         self.stream.flush()
         self.rows += len(records)
         self.invalid.update(r['invalid_reason'] for r in records if not r['coordinate_valid'])
         self.frames.append({'frame_index': index, 'timestamp_s': timestamp,
-                            'mapping': quality, 'positions': records})
+                            'mapping': quality, 'positions': records,
+                            'keypoints': keypoints})
 
     def close(self, status):
         self.stream.close()

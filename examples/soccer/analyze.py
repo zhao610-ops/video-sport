@@ -39,6 +39,7 @@ def analyze(source, output_dir, device='auto', pitch_profile=None,
     metadata = {
         'source_video': str(Path(source).resolve()), 'fps': info.fps,
         'source_total_frames': info.total_frames, 'requested_frames': total,
+        'image_size': {'width': info.width, 'height': info.height},
         'device': device, 'pitch_profile': profile,
         'mapping_settings': settings_metadata(settings),
         'template_cm': {'length': config.length, 'width': config.width,
@@ -81,8 +82,15 @@ def analyze(source, output_dir, device='auto', pitch_profile=None,
                 keypoints = sv.KeyPoints.from_ultralytics(pitch_result)
                 if len(keypoints.xy) and keypoints.keypoint_confidence is not None:
                     matrix, quality = fit_mapping(keypoints.xy[0], keypoints.keypoint_confidence[0], config, settings)
+                    raw_keypoints = {
+                        'xy': [[float(v) if np.isfinite(v) else None for v in point]
+                               for point in keypoints.xy[0]],
+                        'confidence': [float(v) if np.isfinite(v) else None
+                                       for v in keypoints.keypoint_confidence[0]],
+                    }
                 else:
                     matrix, quality = None, {'valid': False, 'reason': 'missing_keypoints'}
+                    raw_keypoints = None
                 detected = sv.Detections.from_ultralytics(player_model(frame, imgsz=1280, verbose=False)[0])
                 # 裁判和足球均不进入本轮轨迹数据与跟踪关联。
                 detected = detected[np.isin(detected.class_id, [PLAYER_CLASS_ID, GOALKEEPER_CLASS_ID])]
@@ -111,7 +119,7 @@ def analyze(source, output_dir, device='auto', pitch_profile=None,
                         'x_norm': x, 'y_norm': y, 'coordinate_valid': valid,
                         'invalid_reason': reason,
                     })
-                writer.add_frame(index, timestamp, quality, records)
+                writer.add_frame(index, timestamp, quality, records, raw_keypoints)
                 if save_video:
                     annotated = box.annotate(frame.copy(), detected)
                     labels = [f"ID {r['track_id']} T{r['team_id']} {'OK' if r['coordinate_valid'] else 'INVALID'}"

@@ -211,9 +211,35 @@ python3 -m examples.soccer.report \
 
 报告只依赖 Python 标准库，不访问视频、模型或网络。只使用有效坐标，轨迹在无效/漏检帧处断开；热区表示可见目标的有效观测次数，受镜头覆盖影响。浏览器打开 HTML 即可查看，字体优先使用微软雅黑。
 
+### 同一帧的原画面与站位核对
+
+```bash
+./.venv/bin/python -m examples.soccer.review \
+  --input outputs/match-01/analysis.json \
+  --output outputs/match-01/review.html --samples 15
+```
+
+该页面从原视频均匀抽取 15 帧，左右同步显示同一时刻的落脚点、跟踪编号与二维位置。点击编号可突出两侧目标；无效观测在原画面标叉，不显示为有效站位。页面内嵌抽帧图片，生成后可以离线打开；生成时需要原视频与 OpenCV，但不会运行模型。原点方向以模板为准，不自动代表进攻方向。
+
+需要核对突变前后时，可用 `--frames 357 358 359` 指定原视频帧编号，替代均匀抽帧。按钮在选定的抽查点间切换，并不保证每次只前进一帧。
+
+### 复用关键点离线比较参数
+
+新版 `analysis.json` 的每帧额外保存原始关键点及置信度，可在完全相同的球员观测上比较映射参数：
+
+```bash
+./.venv/bin/python -m examples.soccer.evaluate \
+  --input outputs/match-01/analysis.json \
+  --output outputs/match-01/comparison.json --thresholds 8 16
+```
+
+比较工具仅使用 NumPy/OpenCV 和保存的数据，不访问视频、球队模型或网络。它输出通过检查的帧数、有效观测数、越界数、拟合内点重投影误差和连续观测的位置变化。拟合内点误差不是独立真值误差，位置变化也不等于速度；不能只按有效率选择正式参数。旧结果没有保存关键点时会明确提示，不生成伪造的对照结果。
+
 验证几何错误和导出一致性：`./.venv/bin/python -m unittest discover -s tests -v`。
 
 2026 年 11 月 12 日新增流程实测：同一示例的前 50 帧，默认 8 像素阈值全部因内点不足被拒绝，保留为 `analysis-check-01`；显式设置 `--ransac-pixels 16` 的对照结果保存在 `analysis-check-16px`，共 1008 条观测、799 条通过几何检查、209 条无效，40 帧通过映射检查。两组均在 `examples/soccer/data/` 下，未提交 Git。CSV/JSON 逐条核对一致，标注视频为 50 帧且末帧可读；使用系统 Python 从保存的 JSON 生成了离线 HTML。16 像素仅为实验对照，未更改默认参数，这些数字不是定位准确率。新增流程尚未完成完整 750 帧和 Windows 实机验证。
+
+后续完整片段与第二样本的验证见 [映射参数验证记录](docs/mapping-validation.md)。正式默认参数尚未确定。
 
 ## 研究与复现约定
 

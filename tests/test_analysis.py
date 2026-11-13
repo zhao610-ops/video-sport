@@ -13,6 +13,8 @@ from sports.common.analysis import (
     AnalysisWriter, MappingSettings, fit_mapping, load_pitch_profile, map_position,
 )
 from examples.soccer.report import render_report
+from examples.soccer.evaluate import compare_settings
+from examples.soccer.review import build_review
 
 
 class MappingTests(unittest.TestCase):
@@ -91,6 +93,49 @@ class MappingTests(unittest.TestCase):
             p.write_text('{"status":"reference","length_m":111,"width_m":null}', encoding='utf-8')
             with self.assertRaises(ValueError):
                 load_pitch_profile(p)
+
+    def test_compare_uses_identical_observations_without_models(self):
+        pixel = cv2.perspectiveTransform(
+            np.array([[[self.config.length * .3, self.config.width * .6]]]), self.inverse)[0, 0]
+        data = {
+            'schema_version': '1.0', 'summary': {'status': 'complete'},
+            'metadata': {'source_video': '测试.mp4',
+                         'template_cm': {'length': self.config.length, 'width': self.config.width,
+                                         'penalty_box_length': self.config.penalty_box_length,
+                                         'penalty_box_width': self.config.penalty_box_width},
+                         'mapping_settings': vars(self.settings)},
+            'frames': [{'frame_index': 0, 'keypoints': {'xy': self.xy.tolist(), 'confidence': [1.] * 32},
+                        'positions': [{'track_id': 1, 'image_x': float(pixel[0]), 'image_y': float(pixel[1])}]}],
+        }
+        result = compare_settings(data, [8., 16.])
+        self.assertEqual([x['valid_observations'] for x in result['results']], [1, 1])
+        self.assertTrue(all(x['accepted_frame_inlier_error_median_px'] < .01 for x in result['results']))
+        del data['frames'][0]['keypoints']
+        with self.assertRaises(ValueError):
+            compare_settings(data, [8.])
+
+    def test_review_extracts_requested_frames_without_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = cv2.VideoWriter(str(root / 'source.mp4'), cv2.VideoWriter_fourcc(*'mp4v'), 25., (80, 60))
+            self.assertTrue(video.isOpened())
+            for _ in range(3):
+                video.write(np.zeros((60, 80, 3), dtype=np.uint8))
+            video.release()
+            data = {'metadata': {'source_video': str(root / 'source.mp4')},
+                    'frames': [{'frame_index': i, 'timestamp_s': i / 25.,
+                                'mapping': {'valid': False, 'reason': 'missing_keypoints'},
+                                'positions': []} for i in range(3)]}
+            path = root / 'analysis.json'
+            path.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+            build_review(path, root / 'review.html', sample_count=3)
+            content = (root / 'review.html').read_text(encoding='utf-8')
+            self.assertEqual(content.count('data:image/jpeg;base64,'), 3)
+            self.assertNotIn('DATA_PLACEHOLDER', content)
+            build_review(path, root / 'selected.html', frame_indices=[2, 0, 2])
+            self.assertEqual((root / 'selected.html').read_text(encoding='utf-8').count('data:image/jpeg;base64,'), 2)
+            with self.assertRaises(ValueError):
+                build_review(path, root / 'bad.html', frame_indices=[999])
 
 
 if __name__ == '__main__':
