@@ -5,6 +5,7 @@ import statistics
 from collections import Counter
 
 from sports.common.tactics import METRIC_DEFINITIONS
+from sports.common.tactical_knowledge import TacticalKnowledgeBase
 
 
 METRICS = ('center_x', 'center_y', 'width', 'longitudinal_span')
@@ -15,6 +16,7 @@ class TacticalTools:
         if dataset.get('schema_version') != 'tactics-1.0' or not dataset.get('team_frames'):
             raise ValueError('需要非空的 tactics-1.0 指标文件')
         self.dataset = dataset
+        self.knowledge = TacticalKnowledgeBase()
         self.rows = dataset['team_frames']
         times = sorted({row['timestamp_s'] for row in self.rows})
         if not all(isinstance(t, (int, float)) and math.isfinite(t) and t >= 0 for t in times):
@@ -121,6 +123,7 @@ class TacticalTools:
 
     def execute(self, name, arguments):
         allowed = {
+            'search_tactical_knowledge': ({'query', 'limit'}, {'query'}, self.knowledge.search),
             'get_dataset_overview': (set(), set(), self.overview),
             'summarize_team': ({'team_id', 'start_s', 'end_s'}, {'team_id'}, self.summarize),
             'compare_windows': ({'team_id', 'a_start_s', 'a_end_s', 'b_start_s', 'b_end_s'},
@@ -136,6 +139,9 @@ class TacticalTools:
 
 def tool_definitions():
     functions = [
+        ('search_tactical_knowledge', '检索中文足球战术概念、判断需要的数据和来源；不证明本场比赛发生了该战术',
+         {'query': {'type': 'string', 'minLength': 1, 'maxLength': 500},
+          'limit': {'type': 'integer', 'minimum': 1, 'maximum': 5}}, ['query']),
         ('get_dataset_overview', '首先查看可查询时间范围、统计口径、单位和数据限制', {}, []),
         ('summarize_team', '查询某队时间段内的中心、宽度、纵向跨度、可用帧及时间分桶',
          {'team_id': {'type': 'integer', 'enum': [0, 1]},

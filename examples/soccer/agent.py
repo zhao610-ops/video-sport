@@ -25,7 +25,8 @@ def main():
         tools = TacticalTools(json.load(stream))
     if args.check_tools:
         result = {'status': 'local_tools_only', 'overview': tools.overview(),
-                  'team_0': tools.summarize(0), 'team_1': tools.summarize(1)}
+                  'team_0': tools.summarize(0), 'team_1': tools.summarize(1),
+                  'knowledge_example': tools.knowledge.search('高位逼抢需要什么证据')}
         output.mkdir(parents=True, exist_ok=True)
         with open(output / 'tools-check.json', 'w', encoding='utf-8') as stream:
             json.dump(result, stream, ensure_ascii=False, allow_nan=False, indent=2)
