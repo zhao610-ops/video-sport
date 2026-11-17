@@ -60,6 +60,21 @@ class AgentTests(unittest.TestCase):
         self.assertNotIn('/private/local-only', json.dumps(self.tools.overview()))
         self.assertEqual(self.tools.summarize(0, 1, 2)['statistics']['width']['mean'], None)
 
+    def test_all_invalid_and_no_observations_remain_distinct(self):
+        invalid = self.tools.summarize(0, .08, .12)
+        outside = self.tools.summarize(0, 1, 2)
+        self.assertEqual(invalid['selected_frames'], 1)
+        self.assertEqual(invalid['available_frames'], 0)
+        self.assertEqual(invalid['available_ratio'], 0.)
+        self.assertFalse(invalid['extends_beyond_dataset'])
+        self.assertEqual(invalid['missing_reasons'], {'frame_mapping_invalid': 1})
+        self.assertEqual(outside['selected_frames'], 0)
+        self.assertIsNone(outside['available_ratio'])
+        self.assertTrue(outside['extends_beyond_dataset'])
+        self.assertEqual(outside['missing_reasons'], {})
+        for summary in (invalid, outside):
+            self.assertIsNone(summary['statistics']['width']['mean'])
+
     def test_windows_are_half_open_and_differences_are_points(self):
         result = self.tools.compare(0, 0., .04, .04, .08)
         self.assertEqual(result['window_a']['selected_frames'], 1)
