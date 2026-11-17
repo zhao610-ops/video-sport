@@ -155,3 +155,5 @@ Desktop.ini
 .directory
 .Trash-*
 /outputs/
+.env.*
+!.env.example

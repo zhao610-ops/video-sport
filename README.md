@@ -2,7 +2,7 @@
 
 本仓库是计算机科学与技术专业本科毕业设计项目，目标是从**足球比赛电视转播视频**中提取可核查的战术数据，并由智能体基于这些数据提供战术问答与解释。
 
-> 当前状态：**已实现映射质量检查、站位导出、离线轨迹/热区和基础可见球员指标。** 基于 [Roboflow Sports](https://github.com/roboflow/sports) 开发；比赛检索、智能体和完整界面仍待实现。以下“规划功能”不代表已经完成。
+> 当前状态：**已实现映射质量检查、站位导出、离线轨迹/热区和基础可见球员指标；DeepSeek 工具调用已完成代码与离线模拟验证，真实 API 尚待验证。** 基于 [Roboflow Sports](https://github.com/roboflow/sports) 开发；比赛检索和完整界面仍待实现。以下“规划功能”不代表已经完成。
 
 ## 项目目标与处理流程
 
@@ -288,6 +288,50 @@ python3 -m examples.soccer.tactics \
 每帧保留两队记录；不可计算时中心与跨度为 JSON `null` / CSV 空单元格，而不是零。`visible_count` 字段是有效候选人数，不是实际全队人数或画面内总人数。报告不跨缺失帧连线，不平滑、不换算米制值，也不自动判断进攻方向；纵向跨度不应直接称为进攻纵深。曲线受画面覆盖、映射与球队分类影响，不能单凭曲线判断战术意图。
 
 2026 年 11 月 13 日验证：在改进版第二段 250 帧上，每种守门员口径均输出 500 条球队逐帧记录。其中 328 条可计算、144 条因帧映射无效缺失、28 条因角色人数超过上限缺失。`tactics-outfield` 为用户确认的默认口径，`tactics-all` 保留为可选对照；输出未提交 Git。CSV/JSON 的记录数、帧号、球队与可用性已核对，页面时间轴、缺失状态和五组曲线已检查；共 16 项自动测试通过。
+
+## DeepSeek 数据分析智能体
+
+本版使用单智能体与三个本地工具：`get_dataset_overview` 查看口径和范围，`summarize_team` 汇总某队时间段，`compare_windows` 比较两个时间段。数值由本地程序计算，模型请求工具、读取结果后用中文解释；工具调用记录带有 `[E1]` 等证据编号。仅检查引用是否存在，尚不能自动证明模型每句话都正确。
+
+接入依据：[DeepSeek 官方工具调用文档](https://api-docs.deepseek.com/guides/tool_calls/)和[官方快速开始](https://api-docs.deepseek.com/quick_start/)。2026 年 11 月 17 日官方示例使用 `deepseek-flash`，已作为可配置的初始模型名。本版显式关闭思考模式，使用官方 Chat Completions 端点；不需要额外安装 SDK。
+
+### 本地配置
+
+将 `.env.example` 复制为仓库根目录的 `.env`，在本地编辑：
+
+```dotenv
+DEEPSEEK_API_KEY=在本地填入新创建的密钥
+DEEPSEEK_MODEL=deepseek-flash
+```
+
+已经出现在聊天、截图或公开位置的密钥应在控制台撤销后换新，不要继续复制到配置。不要把密钥发到聊天、写入源码或示例文件。`.env` 及其他 `.env.*` 本地配置已忽略，只有不含密钥的 `.env.example` 提交 Git。环境变量中的非空配置优先于 `.env`。
+
+### 先检查本地工具
+
+```bash
+python3 -m examples.soccer.agent \
+  --metrics examples/soccer/data/validation-0bfacc-refined/tactics-outfield/metrics.json \
+  --output-dir outputs/agent-tools-check --check-tools
+```
+
+此命令不读取密钥、不联网、不调用模型。生成 `tools-check.json`，只用于检查统计工具，不是 AI 回答。
+
+### 配好新密钥后联网问答
+
+```bash
+python3 -m examples.soccer.agent \
+  --metrics examples/soccer/data/validation-0bfacc-refined/tactics-outfield/metrics.json \
+  --question "球队0在0到5秒与5到10秒的横向宽度有什么差别？请说明数据缺失情况。" \
+  --output-dir outputs/agent-answer-01
+```
+
+Windows 将命令中的 Python 换为 `.\.venv\Scripts\python.exe`，参数相同。每次使用新的输出目录。结果包括 `answer.md` 和 `trace.json`；记录工具参数、统计结果、引用编号和模型名，不记录请求头或密钥。
+
+联网时发送问题、工具定义、数据口径和工具统计结果，不上传视频、完整坐标文件或本机路径。每次问答最多 6 轮模型请求、12 次工具调用；不自动重试可能计费的超时请求。工具只能查询本次指定的指标文件，不能执行命令、读取任意文件或自行上网。错误请求不会显示服务返回的原始文本。
+
+统计使用左闭右开时间段 `[start_s, end_s)`，缺失帧不作零，对可用帧等权平均；均值之差以百分点表示。超出视频范围或没有有效数据时必须说明。默认输入应使用排除守门员的指标文件；实际口径随文件返回给模型。系统尚未提供球权、进攻方向、速度或胜负预测，模型应说明这些限制。
+
+2026 年 11 月 17 日：真实指标文件的离线工具检查通过，24 项自动测试通过，工具调用往返使用模拟响应验证。尚未用真实 API 密钥完成连通性、模型输出质量或实际计费验证，不能标记为线上验收通过。
 
 ## 研究与复现约定
 
