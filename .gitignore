@@ -157,3 +157,5 @@ Desktop.ini
 /outputs/
 .env.*
 !.env.example
+# 本机已有的商业字体仅用于本地原型预览，不随代码分发
+/ui-prototype/local-fonts/
