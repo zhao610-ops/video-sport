@@ -28,7 +28,10 @@ available_ratio 是可用率，不是缺失比例；selected_frames 为 0 时可
 
 
 class DeepSeekError(RuntimeError):
-    pass
+    def __init__(self, message, evidence=None, validation=None):
+        super().__init__(message)
+        self.evidence = evidence or []
+        self.validation = validation or []
 
 
 def load_local_env(path):
@@ -110,6 +113,7 @@ def run_agent(question, tools, client, max_rounds=6, max_tool_calls=12):
     messages = [{'role': 'system', 'content': SYSTEM_PROMPT},
                 {'role': 'user', 'content': question}]
     trace = []
+    validation = []
     successful_names = set()
     numerical_question = bool(re.search(r'宽|跨度|中心|变化|比较|多少|人数|数据|秒', question))
     if re.search(r'什么是|是什么|含义|定义|概念', question) and not re.search(r'\d|秒|均值|比较|变化', question):
@@ -182,9 +186,23 @@ def run_agent(question, tools, client, max_rounds=6, max_tool_calls=12):
         if ('get_dataset_overview' not in successful_names or not answer or not citations
                 or not citations.issubset(valid_ids) or numerical_question and not has_numeric_tool
                 or not card_citations.issubset(known_cards) or knowledge_missing):
+            issues = []
+            if not has_numeric_tool and numerical_question:
+                issues.append('需要调用统计工具核对数值')
+            if not citations or not citations.issubset(valid_ids):
+                issues.append('统计或知识证据编号缺失或无效')
+            if knowledge_missing or not card_citations.issubset(known_cards):
+                issues.append('知识检索或卡片引用缺失或无效')
+            validation.append({'issues': issues, 'valid_evidence_ids': sorted(valid_ids),
+                               'retrieved_card_ids': sorted(known_cards)})
             messages.append({'role': 'assistant', 'content': answer or ''})
-            messages.append({'role': 'user', 'content': '请直接重新回答原始问题，不叙述纠错过程。数值引用有效统计 [E编号]，战术解释引用知识检索 [E编号] 和实际返回的 [K编号]。无匹配或数据不足明确说明；不能引用失败记录或编造编号。'})
+            messages.append({'role': 'user', 'content':
+                             '请直接回答原始问题，不叙述纠错过程。' + '；'.join(issues) + '。'
+                             f'可引用的成功工具编号：{sorted(valid_ids)}；实际返回的知识卡片：{sorted(known_cards)}。'
+                             '每个编号单独写，如 [E2][K001]，不要合并成 [E2,K001]。'
+                             '数值必须来自统计工具，知识解释同时引用知识工具和卡片；无匹配或数据不足明确说明。'})
             continue
         return {'status': 'model_answer', 'answer': answer, 'evidence': trace,
                 'note': '工具计算可复核，模型解释仍需核查；未独立验证每句数值和因果陈述'}
-    raise DeepSeekError('达到对话轮次限制仍未得到有依据的完整回答，请缩小问题范围')
+    raise DeepSeekError('达到对话轮次限制仍未得到有依据的完整回答，请缩小问题范围',
+                        evidence=trace, validation=validation)

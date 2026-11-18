@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>足球战术分析 · 真实数据工作台</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+<svg class="icon-library" aria-hidden="true"><defs>
+  <symbol id="i-pitch" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 12h18M8 3v4h8V3M8 21v-4h8v4"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4zM20 2v4M18 4h4"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m4 4 17 8-17 8 3-8zM7 12h14"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8zM14 3v6h5M8 13h8M8 17h6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M9 6 3 12l6 6M3 12h11a7 7 0 0 1 7 7"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></symbol>
+</defs></svg>
+<a class="skip-link" href="#workspace">跳到分析工作区</a>
+<header class="topbar">
+  <a href="#workspace" class="brand" aria-label="足球战术分析首页"><span class="brand-icon"><svg><use href="#i-pitch"/></svg></span><span>足球战术分析<small>深度学习与智能体</small></span></a>
+  <nav aria-label="主导航"><button class="nav-item active" data-page="analysis" aria-current="page">比赛分析</button><button class="nav-item" data-page="library">战术知识库</button><button class="nav-item" data-page="guide">使用说明</button></nav>
+  <div class="top-right"><span class="prototype-tag">正在读取真实分析结果</span><span class="avatar" aria-label="本地用户">研</span></div>
+</header>
+<main id="workspace">
+  <div class="page-heading"><div><p class="breadcrumb">我的工作区 <span>/</span> 比赛分析 <span>/</span> 验证片段 02</p><h1>比赛分析工作台<span class="heading-dot">.</span></h1><p class="subtitle">在同一条时间轴上，对照比赛画面、球员站位与战术数据。</p></div><button class="button secondary" id="choose-video"><svg><use href="#i-upload"/></svg>当前数据说明</button><input type="file" id="video-file" accept="video/*" hidden></div>
+  <section class="match-strip" aria-label="当前比赛片段">
+    <div class="match-teams"><span class="team-shield blue">0</span><span><strong>球队 0</strong><small>蓝色标记 · 演示</small></span><span class="versus">VS</span><span><strong>球队 1</strong><small>橙色标记 · 演示</small></span><span class="team-shield orange">1</span></div>
+    <div class="match-meta"><span class="status-dot"></span>本地验证片段 <span class="meta-divider"></span><svg><use href="#i-clock"/></svg>00:10 片段 <span class="meta-divider"></span><span id="current-team-caption">正在查看球队 0</span></div>
+    <button class="text-button" id="data-details">查看数据说明<svg><use href="#i-arrow"/></svg></button>
+  </section>
+  <div class="workspace-grid">
+    <aside class="card assistant-panel" aria-labelledby="assistant-title">
+      <div class="panel-title"><div class="title-with-icon"><span class="assistant-icon"><svg><use href="#i-spark"/></svg></span><div><h2 id="assistant-title">战术助手</h2><span class="small muted">让数据成为分析的起点</span></div></div><span class="tiny-dot" title="仅演示交互"></span></div>
+      <div class="model-line"><span>DeepSeek Flash</span><span class="small">演示模式</span></div>
+      <div class="chat-context"><svg><use href="#i-clock"/></svg><span>当前片段 <strong id="context-time">00:05 — 00:10</strong></span></div>
+      <div id="messages" class="messages" role="log" aria-label="战术问答记录" aria-live="polite">
+        <div class="chat-date">本次片段分析</div>
+        <div class="message user"><span class="speaker">你</span><p>这段时间球队的站位有什么特点？</p></div>
+        <div class="message assistant"><span class="speaker"><svg><use href="#i-spark"/></svg>战术助手 <span>演示回答</span></span><p>可以先观察<strong>横向展开</strong>与<strong>纵向跨度</strong>。下方指标描述可见球员的范围，右侧球场图帮助你对照位置。</p><p>判断是否在逼抢，还需要球权、球的位置和施压动作，不能仅凭站位下结论。</p><button class="evidence-link" data-evidence="general"><svg><use href="#i-file"/></svg>查看数据与知识依据 <svg><use href="#i-arrow"/></svg></button></div>
+      </div>
+      <div class="chat-bottom"><p class="small muted">试着问问</p><div class="prompt-chips"><button data-question="这段时间的站位是否更紧凑？">站位是否更紧凑？</button><button data-question="这些数据能确定高位逼抢吗？">能确定高位逼抢吗？</button></div><form id="chat-form"><label class="sr-only" for="question">输入战术问题</label><textarea id="question" rows="2" maxlength="500" placeholder="针对所选片段提问…"></textarea><div class="composer-bottom"><span class="small muted">依据片段与知识库解释</span><button class="send-button" type="submit" aria-label="发送演示问题"><svg><use href="#i-send"/></svg></button></div></form><p class="chat-disclaimer">固定示例回答 · 未连接真实模型</p></div>
+    </aside>
+    <div class="analysis-column">
+      <section class="card video-card" aria-labelledby="video-title"><div class="section-head"><div><span class="eyebrow">比赛画面</span><h2 id="video-title">比赛片段回放</h2></div><span class="neutral-badge"><span class="status-dot"></span>本地素材</span></div>
+        <div class="video-stage" id="video-stage"><video id="match-video" preload="metadata" muted playsinline aria-label="已分析的原始比赛视频"></video><div id="video-fallback" class="video-fallback" hidden><svg><use href="#i-pitch"/></svg><strong>选择一段比赛视频</strong><span>文件仅在本机播放，不上传</span><button class="button" id="fallback-select">选择本地视频</button></div><div class="video-top-overlay"><span><i></i>片段 02</span><span>画面与站位为交互演示</span></div><button id="center-play" class="center-play" aria-label="播放片段"><svg><use href="#i-play"/></svg></button><div class="video-bottom-overlay"><span id="overlay-time">00:05.00</span><span>验证素材 / 前 10 秒</span></div></div>
+        <div class="playback"><button id="play-toggle" class="icon-button" aria-label="播放片段"><svg><use href="#i-play"/></svg></button><span class="time-readout"><b id="play-time">00:05.00</b> / 00:10</span><div class="playback-spacer"></div><label class="speed-label"><span class="sr-only">播放速度</span><select id="speed"><option value="0.5">0.5 倍速</option><option value="1" selected>1 倍速</option><option value="1.5">1.5 倍速</option><option value="2">2 倍速</option></select></label><button id="expand-video" class="icon-button" aria-label="放大视频"><svg><use href="#i-expand"/></svg></button></div>
+        <div class="timeline-section"><div class="timeline-header"><span>片段时间轴</span><span class="small muted">拖动查看对应站位</span></div><div class="timeline-track"><span class="range-highlight" id="range-highlight"></span><input id="timeline" type="range" min="0" max="10" value="5" step="0.04" aria-label="视频时间轴，单位秒"></div><div class="timeline-ticks"><span>00:00</span><span>00:02</span><span>00:04</span><span>00:06</span><span>00:08</span><span>00:10</span></div><div class="range-picker"><span class="small muted">分析范围</span><button data-range="0,5">前 5 秒</button><button class="selected" data-range="5,10">后 5 秒</button><button data-range="0,10">完整片段</button><button class="text-button" id="ask-range">问问这段<svg><use href="#i-spark"/></svg></button></div></div>
+      </section>
+      <section class="card metrics-card" aria-labelledby="metrics-title"><div class="section-head"><div><span class="eyebrow">读懂空间</span><h2 id="metrics-title">可见球员的展开与变化</h2></div><div class="segmented" role="group" aria-label="选择指标球队"><button class="selected" data-team="0" aria-pressed="true"><i class="blue-dot"></i>球队 0</button><button data-team="1" aria-pressed="false"><i class="orange-dot"></i>球队 1</button></div></div><div class="metrics-grid"><div class="metric-item"><span>横向宽度 <svg><use href="#i-expand"/></svg></span><strong id="width-value">65.8<small>%</small></strong><p>占球场宽度 · 片段均值</p></div><div class="metric-item"><span>纵向跨度 <svg><use href="#i-expand"/></svg></span><strong id="span-value">27.9<small>%</small></strong><p>占球场长度 · 片段均值</p></div><div class="metric-item"><span>有效球员 <svg><use href="#i-pitch"/></svg></span><strong id="count-value">9–10<small> 人</small></strong><p>可见且有效 · 不含守门员</p></div></div><div class="chart-header"><span><i class="chart-key"></i>横向宽度变化</span><span class="small muted">演示曲线 · 球场宽度 %</span></div><svg id="metric-chart" class="metric-chart" viewBox="0 0 660 116" role="img" aria-label="演示横向宽度随时间变化曲线"></svg><div class="data-note"><svg><use href="#i-info"/></svg><span>数值与曲线为界面演示，不能用于真实战术判断。</span></div></section>
+    </div>
+    <aside class="right-column">
+      <section class="card pitch-card" aria-labelledby="pitch-title"><div class="section-head"><div><span class="eyebrow">同一时刻，相对站位</span><h2 id="pitch-title">球场视角</h2></div><span class="pitch-time" id="pitch-time">00:05.00</span></div><div class="pitch-tabs" role="group" aria-label="球场显示模式"><button class="selected" data-mode="positions" aria-pressed="true">站位</button><button data-mode="trails" aria-pressed="false">轨迹</button><button data-mode="heatmap" aria-pressed="false">热区</button></div><div class="pitch-wrap"><svg id="pitch" viewBox="-6 -6 112 82" role="img" aria-label="演示球员站位，包含完整禁区、球门区和中圈"><defs><pattern id="grass" width="100" height="13.6" patternUnits="userSpaceOnUse"><rect width="100" height="6.8" fill="#e2ece2"/><rect y="6.8" width="100" height="6.8" fill="#eaf1e8"/></pattern><radialGradient id="heat-blue"><stop stop-color="#387fe9" stop-opacity=".65"/><stop offset="1" stop-color="#387fe9" stop-opacity="0"/></radialGradient><radialGradient id="heat-orange"><stop stop-color="#f38148" stop-opacity=".65"/><stop offset="1" stop-color="#f38148" stop-opacity="0"/></radialGradient></defs><rect width="100" height="68" rx=".7" fill="url(#grass)"/><g id="heat-layer"></g><g class="pitch-lines"><rect width="100" height="68"/><path d="M50 0v68"/><circle cx="50" cy="34" r="8.7"/><circle cx="50" cy="34" r=".28" fill="currentColor"/><path d="M0 14.8h15.7v38.4H0M100 14.8H84.3v38.4H100M0 25.3h5.2v17.4H0M100 25.3h-5.2v17.4h5.2M0 30.5h-2.1v7H0M100 30.5h2.1v7H100M15.7 27.1a8.7 8.7 0 0 1 0 13.8M84.3 40.9a8.7 8.7 0 0 1 0-13.8"/><circle cx="10.5" cy="34" r=".28" fill="currentColor"/><circle cx="89.5" cy="34" r=".28" fill="currentColor"/><path d="M0 1a1 1 0 0 0 1-1M99 0a1 1 0 0 0 1 1M100 67a1 1 0 0 0-1 1M1 68a1 1 0 0 0-1-1"/></g><g id="trail-layer"></g><g id="player-layer"></g></svg></div><div class="pitch-legend"><span><i class="blue-dot"></i>球队 0</span><span><i class="orange-dot"></i>球队 1</span><span>编号为演示 ID</span></div><div id="player-detail" class="player-detail">点击球员标记，查看相对坐标</div><p class="pitch-caption" id="pitch-caption">站位为模拟点，不是本视频识别结果。</p></section>
+      <section class="card quality-card"><div class="section-head"><h2>数据可用性</h2><span class="neutral-badge">演示</span></div><div class="quality-number"><strong id="quality-value">94.4<small>%</small></strong><span>所选片段可用率</span></div><div class="quality-bar"><span id="quality-bar"></span></div><div class="quality-row"><span>有效观测帧</span><strong id="quality-frames">118 / 125</strong></div><div class="quality-row"><span>守门员统计</span><strong>已排除</strong></div><div class="quality-row"><span>球场尺寸</span><strong class="reference-label">参考尺寸</strong></div><div class="quality-foot"><svg><use href="#i-info"/></svg><span>缺失不补零；镜头外球员未计入。</span></div></section>
+      <button class="knowledge-callout" id="open-knowledge"><span class="assistant-icon"><svg><use href="#i-file"/></svg></span><span><strong>足球战术知识库</strong><small>9 张知识卡片 · 可追溯来源</small></span><svg><use href="#i-arrow"/></svg></button>
+    </aside>
+  </div>
+  <footer><span>足球战术分析系统 · 交互原型</span><span>视频留在本机 · 当前为界面交互演示</span><a href="https://dribbble.com/shots/26517374-Football-Match-Analytics-Dashboard-Live-Stats-Chat" target="_blank" rel="noopener">视觉参考：Atish Chakma ↗</a></footer>
+</main>
+<dialog id="detail-dialog"><div class="dialog-header"><div><span class="eyebrow" id="dialog-eyebrow">分析依据</span><h2 id="dialog-title">数据与战术知识</h2></div><button class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="dialog-content"></div><button class="button secondary dialog-close" id="close-dialog-bottom">返回工作台</button></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
