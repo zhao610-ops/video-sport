@@ -20,7 +20,7 @@ from sports.common.team import TeamClassifier
 
 
 def analyze(source, output_dir, device='auto', pitch_profile=None,
-            max_frames=None, save_video=False, settings=None):
+            max_frames=None, save_video=False, settings=None, include_ball=True):
     """球队编号仅在本次分析中有效，跟踪编号不等于球衣号码。"""
     settings = settings or MappingSettings()
     if max_frames is not None and max_frames <= 0:
@@ -132,6 +132,9 @@ def analyze(source, output_dir, device='auto', pitch_profile=None,
     finally:
         writer.close(status)
     print(f'数据已保存：{Path(output_dir).resolve()}，状态：{status}', flush=True)
+    if include_ball and status == 'complete':
+        from examples.soccer.track_ball import track_ball
+        track_ball(Path(output_dir)/'analysis.json', device=device, save_video=save_video)
 
 
 if __name__ == '__main__':
@@ -148,9 +151,10 @@ if __name__ == '__main__':
     parser.add_argument('--min-inlier-ratio', type=float, default=0.6)
     parser.add_argument('--anchor-policy', choices=['all', 'structural'], default='all')
     parser.add_argument('--require-region-support', action='store_true')
+    parser.add_argument('--skip-ball', action='store_true', help='只处理球员，跳过默认的足球追加检测')
     args = parser.parse_args()
     analyze(args.source, args.output_dir, args.device, args.pitch_profile,
             args.max_frames, args.save_video,
             MappingSettings(args.keypoint_confidence, args.min_inliers,
                             args.ransac_pixels, args.min_inlier_ratio,
-                            args.anchor_policy, args.require_region_support))
+                            args.anchor_policy, args.require_region_support), include_ball=not args.skip_ball)

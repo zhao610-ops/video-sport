@@ -16,13 +16,14 @@ from sports.annotators.pitch_svg import draw_pitch_svg
 from sports.common.deepseek_agent import DeepSeekClient, DeepSeekError, load_local_env, run_agent
 from sports.common.tactics import calculate_tactics
 from sports.common.tactical_tools import TacticalTools
+from sports.common.ball_data import load_ball_data
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class Workspace:
-    def __init__(self, analysis_path, video_path=None, env_file=None, output_dir=None):
+    def __init__(self, analysis_path, video_path=None, env_file=None, output_dir=None, ball_path=None):
         with open(analysis_path, encoding='utf-8') as stream:
             self.analysis = json.load(stream)
         self.metrics = calculate_tactics(self.analysis, include_goalkeepers=False)
@@ -30,6 +31,9 @@ class Workspace:
         self.video = Path(video_path or self.analysis['metadata']['source_video']).resolve()
         if not self.video.is_file():
             raise ValueError('找不到对应视频，请通过 --video 指定与分析结果匹配的原始视频')
+        balls = load_ball_data(ball_path or Path(analysis_path).parent/'ball/ball.json',
+                               analysis_path, self.video, self.analysis)
+        balls_by_index = {row['frame_index']: row for row in balls['frames']}
         self.output = Path(output_dir or ROOT / 'outputs/web-agent')
         self.lock = threading.Lock()
         if env_file:
@@ -53,6 +57,7 @@ class Workspace:
                                           ('track_id', 'team_id', 'role', 'x_norm', 'y_norm')})
             counts = Counter(point['track_id'] for point in positions)
             frames.append({'frame_index': frame['frame_index'], 'timestamp_s': frame['timestamp_s'],
+                           'ball': balls_by_index.get(frame['frame_index']),
                            'mapping': {'valid': frame['mapping']['valid'], 'reason': frame['mapping']['reason']},
                            'positions': [point for point in positions if counts[point['track_id']] == 1]})
         self.dataset = {'overview': self.tools.overview(), 'fps': self.analysis['metadata']['fps'],
@@ -60,6 +65,7 @@ class Workspace:
                         'pitch_svg': draw_pitch_svg(self.analysis['metadata']['template_cm'], width=100, height=68),
                         'agent_ready': self.client is not None, 'model': 'deepseek-flash',
                         'video_url': '/media/video', 'video_name': self.video.name}
+        self.dataset['ball'] = {key: value for key, value in balls.items() if key != 'frames'}
 
     def ask(self, request):
         if self.client is None:
@@ -155,6 +161,8 @@ def make_handler(workspace):
                 self.send_header('Accept-Ranges', 'bytes')
                 if status == 206:
                     self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+            else:
+                self.send_header('Cache-Control', 'no-store')
             self.end_headers()
             if self.command != 'HEAD':
                 try:
@@ -194,6 +202,7 @@ def make_handler(workspace):
                 self.serve_file(workspace.video, video=True)
             else:
                 files = {'/': ROOT/'web/index.html', '/app.js': ROOT/'web/app.js',
+                         '/ball.js': ROOT/'web/ball.js',
                          '/style.css': ROOT/'web/style.css', '/base.css': ROOT/'ui-prototype/style.css',
                          '/local-fonts/yahei.ttf': ROOT/'ui-prototype/local-fonts/yahei.ttf'}
                 if path not in files:
